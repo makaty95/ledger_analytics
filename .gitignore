@@ -1,0 +1,54 @@
+# ---- Environment / secrets ----
+.env
+.env.*
+!.env.example
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# ---- Virtual environments ----
+.venv/
+venv/
+env/
+ENV/
+
+# ---- Django ----
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+*.log
+
+# ---- IDE / editor ----
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# ---- Node (only if using the MCP Inspector / any npx tooling locally) ----
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# ---- Jupyter / notebooks, if you use any for experimentation ----
+.ipynb_checkpoints/
+
+# ---- Test / coverage ----
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ---- OS-specific junk ----
+desktop.ini
+
+# ---- Downloaded datasets (keep large local test data out of git) ----
+*.sql
+*.csv
+!docs/**/*.csv
