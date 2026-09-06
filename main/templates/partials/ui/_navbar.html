@@ -1,0 +1,16 @@
+<div class="topbar">
+    <div class="mark">Ledger <em>· db analytics</em></div>
+    <div class="path">{{db_info.host}}/{{db_info.name}}</div>
+    <div class="status"><span class="dot"></span>connected</div>
+    <button id="disconnect-btn" class="disconnect">Disconnect</button>
+</div>
+
+<script>
+    document.getElementById('disconnect-btn').addEventListener('click', async () => {
+        await fetch('/disconnect/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        });
+        window.location.href = '/init_connection/';
+    });
+</script>

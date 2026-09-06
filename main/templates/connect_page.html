@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connect a database — Ledger</title>
+<style>
+
+  :root{
+    --paper:      #F6F4EF;
+    --panel:      #FFFFFF;
+    --ink:        #23262B;
+    --ink-soft:   #5B6470;
+    --line:       #DAD5C8;
+    --line-soft:  #E8E4D9;
+    --navy:       #2F4858;
+    --navy-dark:  #1E313C;
+    --stripe:     #FAF8F3;
+    --user-bg:    #EFEDE6;
+    --ok:         #3E6B4F;
+    --error:      #9A4A3F;
+
+    --serif:  Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --sans:   "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --mono:   "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body{
+    height: 100%;
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+  }
+
+  /* ---------------------------------------------------------
+     TOPBAR (same as chat page, for consistency)
+  --------------------------------------------------------- */
+  .topbar {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding: 16px 26px;
+    background: var(--navy-dark);
+    color: #EFE9DC;
+    border-bottom: 1px solid #142028;
+  }
+  .topbar .mark{
+    font-family: var(--serif);
+    font-size: 21px;
+    letter-spacing: 0.3px;
+  }
+  .topbar .mark em{ font-style: italic; color: #B9C6CC; font-weight: 400; }
+  .topbar .path{
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: #8FA0A8;
+  }
+
+  /* ---------------------------------------------------------
+     PAGE
+  --------------------------------------------------------- */
+  .page{
+    min-height: calc(100vh - 55px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 64px 20px;
+  }
+
+  .card{
+    width: 100%;
+    max-width: 460px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+  }
+
+  .card-head{
+    padding: 26px 30px 20px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .card-head .eyebrow{
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-soft);
+    letter-spacing: 0.3px;
+    margin-bottom: 8px;
+  }
+  .card-head h1{
+    margin: 0 0 6px;
+    font-family: var(--serif);
+    font-size: 22px;
+  }
+  .card-head p{
+    margin: 0;
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+
+  form{
+    padding: 24px 30px 30px;
+  }
+
+  .field{
+    margin-bottom: 18px;
+  }
+  .field:last-of-type{
+    margin-bottom: 0;
+  }
+  .field label{
+    display: block;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+  }
+  .field input{
+    width: 100%;
+    padding: 10px 12px;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    outline: none;
+  }
+  .field input:focus{
+    border-color: var(--navy);
+    background: var(--panel);
+  }
+  .field input::placeholder{
+    color: #A8A296;
+    font-family: var(--sans);
+  }
+
+  .field-hint{
+    margin-top: 5px;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+  }
+  .field-error{
+    margin-top: 5px;
+    font-size: 11.5px;
+    color: var(--error);
+    font-family: var(--mono);
+  }
+
+  .row-split{
+    display: flex;
+    gap: 14px;
+  }
+  .row-split .field{
+    flex: 1 1 0;
+  }
+  .row-split .field.narrow{
+    flex: 0 0 110px;
+  }
+
+  .actions{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 26px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line-soft);
+  }
+  .btn-primary{
+    padding: 11px 22px;
+    background: var(--navy);
+    color: #F4F1E9;
+    border: 1px solid var(--navy);
+    font-family: var(--sans);
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-primary:hover{ background: var(--navy-dark); }
+
+  .status-line{
+    margin-top: 16px;
+    padding: 10px 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    border: 1px solid var(--line-soft);
+    background: var(--stripe);
+    color: var(--ink-soft);
+    display: none; /* toggled on with JS/DTL when there's a message */
+  }
+  .status-line.ok{
+    border-color: #C9DBCC;
+    background: #F1F6F1;
+    color: var(--ok);
+    display: block;
+  }
+  .status-line.error{
+    border-color: #E4C9C2;
+    background: #FBF1EE;
+    color: var(--error);
+    display: block;
+  }
+
+  .btn-primary:disabled {
+      background: var(--paper);
+      color: var(--ink-soft);
+      border-color: var(--line);
+      cursor: not-allowed;
+  }
+  .btn-primary:disabled:hover {
+      background: var(--paper);   /* override the normal hover state while disabled */
+  }
+
+</style>
+</head>
+<body>
+
+  <div class="page">
+    <div class="card">
+
+      <div class="card-head">
+        <div class="eyebrow">New connection</div>
+        <h1>Connect a database</h1>
+        <p>Credentials are used to run read-only queries against this database. They're stored encrypted and never shown in full again.</p>
+      </div>
+
+      <form method="post" action="#" id="connect-form">
+
+        <div class="field">
+          <label for="id_database">Database name</label>
+          <input type="text" id="id_database" name="database" placeholder="analytics_reporting" autocomplete="off">
+        </div>
+
+        <div class="row-split">
+          <div class="field">
+            <label for="id_host">Host</label>
+            <input type="text" id="id_host" name="host" placeholder="db.internal.example.com" autocomplete="off">
+          </div>
+          <div class="field narrow">
+            <label for="id_port">Port</label>
+            <input type="text" id="id_port" name="port" placeholder="5432" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="id_user">User</label>
+          <input type="text" id="id_user" name="user" placeholder="analytics_ro" autocomplete="off">
+        </div>
+
+        <div class="field">
+          <label for="id_password">Password</label>
+          <input type="password" id="id_password" name="password" placeholder="••••••••••" autocomplete="off">
+          <div class="field-hint">Stored encrypted at rest. Use a read-only role if possible.</div>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn-primary">Test &amp; save connection</button>
+          <button type="button" id="btn-continue" class="btn-primary" disabled>Continue</button>
+        </div>
+
+        <div class="status-line"></div>
+      </form>
+
+    </div>
+  </div>
+
+<script>
+  const db_name_inp = document.getElementById("id_database")
+  const db_host_inp = document.getElementById("id_host")
+  const db_port_inp = document.getElementById("id_port")
+  const db_user_inp = document.getElementById("id_user")
+  const db_pass_inp = document.getElementById("id_password")
+  const statusLine = document.querySelector('.status-line')
+  const btnTest = document.querySelector('#connect-form button[type="submit"]')
+  const btnContinue = document.getElementById("btn-continue")
+
+  function showStatus(message, isOk) {
+      statusLine.textContent = message;
+      statusLine.className = 'status-line ' + (isOk ? 'ok' : 'error');
+  }
+
+  async function testDbConnection(db_name, db_host, db_user, db_password, db_port) {
+      btnTest.disabled = true;
+      const originalLabel = btnTest.textContent;
+      btnTest.textContent = 'Testing…';
+
+      try {
+          const response = await fetch('/connect/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  name: db_name,
+                  host: db_host,
+                  user: db_user,
+                  password: db_password,
+                  port: db_port
+              }),
+          });
+
+          if (!response.ok) {
+              const data = await response.json().catch(() => ({}));
+              showStatus("DB connection failed.", false);
+              return;
+          }
+
+          showStatus('Connected successfully.', true);
+          btnContinue.disabled = false;
+      } finally {
+          btnTest.disabled = false;
+          btnTest.textContent = originalLabel;
+      }
+  }
+
+  document.getElementById('connect-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const port = parseInt(db_port_inp.value, 10);
+      if (isNaN(port)) {
+          showStatus("Port must be a number.", false);
+          return;
+      }
+      testDbConnection(
+          db_name_inp.value,
+          db_host_inp.value,
+          db_user_inp.value,
+          db_pass_inp.value,
+          port
+      );
+  });
+
+  btnContinue.addEventListener('click', () => {
+      window.location.href = '/';
+  });
+
+</script>
+
+</body>
+</html>

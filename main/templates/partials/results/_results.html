@@ -1,0 +1,7 @@
+{% for block in content %}
+    {% if block.type == "paragraph" %}
+        {% include "partials/results/_paragraph.html" %}
+    {% elif "chart" in block.type %}
+        {% include "partials/results/_chart.html" %}
+    {% endif %}
+{% endfor %}

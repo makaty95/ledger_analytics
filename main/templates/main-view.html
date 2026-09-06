@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ledger — DB Analytics Assistant</title>
+<style>
+
+  /* ---------------------------------------------------------
+     TOKENS
+  --------------------------------------------------------- */
+  :root{
+    --paper:      #F6F4EF;
+    --panel:      #FFFFFF;
+    --ink:        #23262B;
+    --ink-soft:   #5B6470;
+    --line:       #DAD5C8;
+    --line-soft:  #E8E4D9;
+    --navy:       #2F4858;
+    --navy-dark:  #1E313C;
+    --stripe:     #FAF8F3;
+    --user-bg:    #EFEDE6;
+    --ok:         #3E6B4F;
+
+    --serif:  Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --sans:   "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --mono:   "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+  }
+
+  /* ---------------------------------------------------------
+     FRAME
+  --------------------------------------------------------- */
+  .frame {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .topbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding: 16px 26px;
+    background: var(--navy-dark);
+    color: #EFE9DC;
+    border-bottom: 1px solid #142028;
+  }
+  .topbar .mark {
+    font-family: var(--serif);
+    font-size: 21px;
+    letter-spacing: 0.3px;
+  }
+  .topbar .mark em{ font-style: italic; color: #B9C6CC; font-weight: 400; }
+  .topbar .path {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: #8FA0A8;
+  }
+  .topbar .status{
+    margin-left: auto;
+    font-size: 12px;
+    font-family: var(--mono);
+    color: #9FD6B2;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .topbar .status .dot{
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #6FCF8E;
+    box-shadow: 0 0 0 3px rgba(111,207,142,0.15);
+  }
+
+  .body {
+    flex: 1 1 auto;
+    display: flex;
+    min-height: 0;
+  }
+
+  /* ---------------------------------------------------------
+     LEFT — CHAT
+  --------------------------------------------------------- */
+  .chat {
+    flex: 0 0 380px;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+    border-right: 1px solid var(--line);
+    min-height: 0;
+  }
+
+  .chat-head {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .chat-head h1{
+    margin: 0 0 3px;
+    font-family: var(--serif);
+    font-size: 17px;
+    font-weight: 700;
+  }
+  .chat-head p{
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+
+  .thread {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .msg { max-width: 100%; }
+  .msg .who {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--ink-soft);
+    margin-bottom: 5px;
+  }
+  .msg .bubble {
+    font-size: 13.8px;
+    line-height: 1.5;
+    padding: 10px 13px;
+    border: 1px solid var(--line);
+  }
+
+  .msg.user .bubble {
+    background: var(--user-bg);
+    border-color: var(--line);
+  }
+  .msg.ai .bubble {
+    background: var(--panel);
+    border-color: var(--line-soft);
+    border-left: 3px solid var(--navy);
+  }
+  .msg.ai .bubble p{ margin: 0 0 8px; }
+  .msg.ai .bubble p:last-child{ margin-bottom: 0; }
+
+  .msg.ai .query-chip{
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--navy);
+    background: var(--stripe);
+    border: 1px solid var(--line-soft);
+    padding: 7px 9px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .thread::-webkit-scrollbar{ width: 9px; }
+  .thread::-webkit-scrollbar-thumb{ background: var(--line); }
+  .thread::-webkit-scrollbar-track{ background: transparent; }
+
+  .composer {
+    flex: 0 0 auto;
+    border-top: 1px solid var(--line);
+    padding: 14px 16px 16px;
+    background: var(--panel);
+  }
+  .composer form{
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+  .composer textarea{
+    flex: 1 1 auto;
+    resize: none;
+    height: 44px;
+    padding: 10px 11px;
+    font-family: var(--sans);
+    font-size: 13.5px;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    outline: none;
+  }
+  .composer textarea:focus{
+    border-color: var(--navy);
+  }
+  .composer button{
+    height: 44px;
+    padding: 0 18px;
+    background: var(--navy);
+    color: #F4F1E9;
+    border: 1px solid var(--navy);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .composer button:hover{ background: var(--navy-dark); }
+  .composer .hint{
+    margin: 8px 2px 0;
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+
+  /* ---------------------------------------------------------
+     RIGHT — RESULTS
+  --------------------------------------------------------- */
+  .results {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .results-head {
+    flex: 0 0 auto;
+    padding: 16px 26px 0;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
+  }
+  .results-head .title-row{
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 20px;
+  }
+  .results-head h2{
+    margin: 0 0 4px;
+    font-family: var(--serif);
+    font-size: 19px;
+  }
+  .results-head .meta{
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-family: var(--mono);
+  }
+
+  .tabs{
+    display: flex;
+    gap: 22px;
+    margin-top: 14px;
+  }
+  .tabs a{
+    display: inline-block;
+    padding: 8px 2px 10px;
+    font-size: 12.5px;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--ink-soft);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+  }
+  .tabs a.active{
+    color: var(--navy);
+    border-bottom-color: var(--navy);
+  }
+
+  .sql-strip{
+    margin: 14px 0 0;
+    padding: 10px 14px;
+    background: var(--navy-dark);
+    color: #D7E4E9;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .sql-strip .kw{ color: #9FD6B2; }
+  .sql-strip .lit{ color: #E7C88E; }
+
+  .results-body{
+    flex: 1 1 auto;
+    overflow: auto;
+    padding: 18px 26px 30px;
+    background: var(--paper);
+  }
+
+  .summary-row{
+    display: flex;
+    gap: 14px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .stat{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    padding: 12px 16px;
+    min-width: 140px;
+  }
+  .stat .num{
+    font-family: var(--serif);
+    font-size: 22px;
+    color: var(--navy);
+  }
+  .stat .label{
+    font-size: 11px;
+    color: var(--ink-soft);
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-top: 2px;
+  }
+
+  table.report{
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    font-size: 13px;
+  }
+  table.report caption{
+    text-align: left;
+    font-family: var(--serif);
+    font-size: 14px;
+    padding: 4px 0 10px;
+    color: var(--ink);
+  }
+  table.report thead th{
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--ink-soft);
+    background: var(--stripe);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    border-right: 1px solid var(--line-soft);
+    white-space: nowrap;
+  }
+  table.report thead th:last-child{ border-right: none; }
+  table.report tbody td{
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--line-soft);
+    border-right: 1px solid var(--line-soft);
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  table.report tbody td:last-child{ border-right: none; }
+  table.report tbody tr:nth-child(even){ background: var(--stripe); }
+  table.report tbody tr:hover{ background: #F0EEE4; }
+  table.report td.num{ text-align: right; font-family: var(--mono); }
+  table.report td.tag{
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ok);
+  }
+
+  .results-foot{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 14px;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    font-family: var(--mono);
+  }
+  .results-foot .export{
+    color: var(--navy);
+    text-decoration: none;
+    border-bottom: 1px solid var(--navy);
+    padding-bottom: 1px;
+  }
+
+  /* ---------------------------------------------------------
+     RESPONSIVE
+  --------------------------------------------------------- */
+  @media (max-width: 860px){
+    .body{ flex-direction: column; }
+    .chat{ max-width: none; flex: 0 0 42%; border-right: none; border-bottom: 1px solid var(--line); }
+    .results-body{ padding: 16px; }
+  }
+
+</style>
+</head>
+<body>
+
+<div class="frame">
+
+  <div class="topbar">
+    <div class="mark">Ledger <em>· db analytics</em></div>
+    <div class="path">production / analytics_reporting</div>
+    <div class="status"><span class="dot"></span>connected</div>
+  </div>
+
+  <div class="body">
+
+    <!-- ============ LEFT: CHAT ============ -->
+    <aside class="chat">
+      <div class="chat-head">
+        <h1>Ask about your data</h1>
+        <p>Answers are generated as SQL and run read-only.</p>
+      </div>
+
+      <div class="thread" id="thread">
+
+        <div class="msg user">
+          <div class="who">You</div>
+          <div class="bubble">What were our top 5 customers by revenue last quarter?</div>
+        </div>
+
+        <div class="msg ai">
+          <div class="who">Assistant</div>
+          <div class="bubble">
+            <p>Here are the top 5 customers by revenue for Q2 2026, ranked by total order value.</p>
+            <div class="query-chip">SELECT customer_name, SUM(total) AS revenue
+FROM orders
+WHERE order_date BETWEEN '2026-04-01' AND '2026-06-30'
+GROUP BY customer_name
+ORDER BY revenue DESC
+LIMIT 5;</div>
+          </div>
+        </div>
+
+        <div class="msg user">
+          <div class="bubble">Break that down by region too.</div>
+        </div>
+
+        <div class="msg ai">
+          <div class="who">Assistant</div>
+          <div class="bubble">
+            <p>Updated the report on the right — grouped by customer and region, same date range.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="composer">
+        <form>
+          <textarea placeholder="Ask a question about your database…"></textarea>
+          <button type="submit">Run</button>
+        </form>
+        <div class="hint">Enter to send · Shift+Enter for new line</div>
+      </div>
+
+    </aside>
+
+    <!-- ============ RIGHT: RESULTS ============ -->
+    <main class="results">
+
+      <div class="results-head">
+        <div class="title-row">
+          <h2>Top customers by revenue — Q2 2026</h2>
+          <div class="meta">42 rows · 0.31s</div>
+        </div>
+
+        <div class="tabs">
+          <a href="#" class="active">Table</a>
+          <a href="#">Chart</a>
+          <a href="#">Query</a>
+        </div>
+
+        <div class="sql-strip"><span class="kw">SELECT</span> customer_name, region, <span class="kw">SUM</span>(total) <span class="kw">AS</span> revenue
+<span class="kw">FROM</span> orders
+<span class="kw">WHERE</span> order_date <span class="kw">BETWEEN</span> <span class="lit">'2026-04-01'</span> <span class="kw">AND</span> <span class="lit">'2026-06-30'</span>
+<span class="kw">GROUP BY</span> customer_name, region
+<span class="kw">ORDER BY</span> revenue <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> 5;</div>
+      </div>
+
+      <div class="results-body">
+
+        <div class="summary-row">
+          <div class="stat">
+            <div class="num">$486.2K</div>
+            <div class="label">Total revenue</div>
+          </div>
+          <div class="stat">
+            <div class="num">5</div>
+            <div class="label">Customers shown</div>
+          </div>
+          <div class="stat">
+            <div class="num">$97.2K</div>
+            <div class="label">Avg. per customer</div>
+          </div>
+        </div>
+
+        <table class="report">
+          <caption>Query result</caption>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Customer</th>
+              <th>Region</th>
+              <th>Orders</th>
+              <th>Revenue</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>Meridian Foods Ltd.</td>
+              <td>EMEA</td>
+              <td class="num">128</td>
+              <td class="num">$132,450.00</td>
+              <td class="tag">active</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Northwind Traders</td>
+              <td>NA</td>
+              <td class="num">96</td>
+              <td class="num">$104,900.00</td>
+              <td class="tag">active</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>Al-Fanar Holdings</td>
+              <td>MENA</td>
+              <td class="num">81</td>
+              <td class="num">$91,320.00</td>
+              <td class="tag">active</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>Sakura Logistics</td>
+              <td>APAC</td>
+              <td class="num">74</td>
+              <td class="num">$86,010.00</td>
+              <td class="tag">active</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>Delta Manufacturing</td>
+              <td>NA</td>
+              <td class="num">63</td>
+              <td class="num">$71,520.00</td>
+              <td class="tag">churn risk</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="results-foot">
+          <span>Showing 5 of 5 rows</span>
+          <a href="#" class="export">Export as CSV</a>
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+</div>
+
+</body>
+</html>

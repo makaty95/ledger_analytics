@@ -1,0 +1,154 @@
+{% comment %}
+Renders the right-side panel for AI chat prompt
+{% endcomment %}
+
+<aside class="chat">
+    <div class="chat-head">
+        <h1>Ask about your data</h1>
+        <p>Clarifications, Visuals are generated on the right side.</p>
+    </div>
+
+    <div class="thread" id="thread">
+        <!--Here goes all messages-->
+        {% for msg in conversation %}
+            {% if msg.role == "user" %}
+                {% include "partials/ui/_user_message.html" with message=msg.text %}
+            {% elif msg.role == "assistant" %}
+                {{ msg.html|safe }}
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    <div class="composer">
+        <form id="chat-form">
+            <textarea id="chat-input" placeholder="Ask a question about your database…"></textarea>
+            <button type="submit">Run</button>
+        </form>
+        <div class="hint">Enter to send</div>
+    </div>
+
+</aside>
+
+
+<script>
+    const form = document.getElementById('chat-form');
+    const input = document.getElementById('chat-input');
+    const thread = document.getElementById('thread');
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function appendUserMessage(message) {
+        const html = `
+            <div class="msg user">
+                <div class="who">You</div>
+                <div class="bubble">${escapeHtml(message)}</div>
+            </div>
+        `;
+        thread.insertAdjacentHTML('beforeend', html);
+        thread.scrollTop = thread.scrollHeight;
+    }
+
+    function appendHtml(html) {
+        thread.insertAdjacentHTML('beforeend', html);
+        thread.scrollTop = thread.scrollHeight;
+    }
+
+    async function sendMessage(message) {
+        const response = await fetch('/query/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            appendHtml(`<div class="msg ai error"><div class="who">Assistant</div><div class="bubble">Error: ${escapeHtml(data.error || 'Something went wrong')}</div></div>`);
+            return;
+        }
+
+        appendHtml(data.ai_html);
+
+        update_results_section();
+    }
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const message = input.value.trim();
+        if (!message) return;
+
+        appendUserMessage(message);
+        input.value = '';
+
+        sendMessage(message);
+    });
+
+    // Enter to send, Shift+Enter for newline
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            form.requestSubmit();
+        }
+    });
+
+    async function get_results_data() {
+        try {
+            const response = await fetch('/results/', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+            });
+
+            if (!response.ok) return null;
+            return await response.json();
+            // Expecting: { results_html: "<p>...</p><div class='chart-block'>...</div>", content: [...] }
+        } catch (err) {
+            console.error("Failed to fetch results:", err);
+            return null;
+        }
+    }
+
+    let lastContentJson = null;
+    async function update_results_section() {
+        const data = await get_results_data();
+        if (!data) return;
+
+        // 1. Target the report container in the right panel
+        const reportContainer = document.querySelector('.results-body .report');
+        if (!reportContainer) return;
+
+        // 2. Replace title for results page
+         const titleEl = document.querySelector('.title-row h2');
+        if (titleEl) {
+            titleEl.textContent = data.title;
+        }
+
+        // 3. Replace HTML content dynamically
+        const newContentJson = JSON.stringify(data.content);
+        if (newContentJson === lastContentJson) {
+            return;
+        }
+        lastContentJson = newContentJson;
+
+        reportContainer.innerHTML = data.results_html;
+
+
+        // 4. Re-initialize Chart.js charts using the newly fetched JSON data array
+        if (typeof window.renderCharts === 'function' && data.content) {
+            window.renderCharts(data.content);
+        }
+    }
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+</script>

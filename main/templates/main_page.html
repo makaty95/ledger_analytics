@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+<!-- ============ LEFT: CHAT ============ -->
+{% block chat %}
+{% include "partials/ui/_chat_area.html" %}
+{% endblock chat %}
+
+
+<!-- ============ RIGHT: RESULTS ============ -->
+{% block content %}
+<main class="results">
+
+    <div class="results-head">
+        <div class="title-row">
+            <h2>{{title}}</h2>
+        </div>
+    </div>
+
+    <div class="results-body">
+        <div class="report">
+            <!--Here will be all the report blocks-->
+            {% include "partials/results/_results.html" %}
+        </div>
+
+        <div class="results-foot">
+            <span>&copy; Mohamed Makaty</span>
+<!--            <a href="#" class="export">Export as CSV</a>-->
+        </div>
+
+    </div>
+
+
+</main>
+{% endblock content %}
+
+{% block scripts %}
+{{ content|json_script:"results-page-data" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Keep track of active Chart instances so we can destroy them before re-rendering
+    window.activeCharts = [];
+
+    window.renderCharts = function(blocks) {
+        // Destroy old chart instances to prevent memory leaks or hover bugs
+        if (window.activeCharts.length > 0) {
+            window.activeCharts.forEach(chart => chart.destroy());
+            window.activeCharts = [];
+        }
+
+        if (!blocks || !Array.isArray(blocks)) return;
+
+        const chartBlocks = blocks.filter(b => b.type && b.type.endsWith('_chart'));
+        const canvasElements = document.querySelectorAll('.results-chart');
+
+        canvasElements.forEach((canvas, i) => {
+            const chartData = chartBlocks[i];
+            if (!chartData) return;
+
+            let newChart = null;
+            if(chartData.type === 'bar_chart') {
+                const newChart = new Chart(canvas, {
+                    type: 'bar',
+                    data: {
+                        labels: chartData.categories,
+                        datasets: chartData.series.map(s => ({
+                            label: s.name,
+                            data: s.values
+                        }))
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: true, text: chartData.title },
+                            legend: { display: chartData.series.length > 1 },
+                        },
+                        scales: {
+                            x: { title: { display: true, text: chartData.x_label } },
+                            y: { title: { display: true, text: chartData.y_label } },
+                        }
+                    }
+                });
+
+            } else if(chartData.type === 'pie_chart') {
+                const newChart = new Chart(canvas, {
+                    type: 'pie',
+                    data: {
+                        labels: chartData.categories,
+                        datasets: [{
+                            label: chartData.title,
+                            data: chartData.values
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: Boolean(chartData.title), text: chartData.title },
+                            legend: { display: true },
+                        }
+                    }
+                });
+            } else if (chartData.type === 'line_chart') {
+                const newChart = new Chart(canvas, {
+                    type: 'line',
+                    data: {
+                        labels: chartData.categories,
+                        datasets: chartData.series.map(s => ({
+                            label: s.name,
+                            data: s.values,
+                            pointStyle: 'circle',
+                            pointRadius: 10,
+                            pointHoverRadius: 15
+                        }))
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: true, text: chartData.title },
+                            legend: { display: chartData.series.length > 1 },
+                        },
+                        scales: {
+                            x: { title: { display: true, text: chartData.x_label } },
+                            y: { title: { display: true, text: chartData.y_label } },
+                        }
+                    }
+                });
+
+            } else if (chartData.type === 'scatter_chart') {
+                const newChart = new Chart(canvas, {
+                    type: 'scatter',
+                    data: {
+                        datasets: chartData.series.map(s => ({
+                            label: s.name,
+                            data: s.points
+                        }))
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: true, text: chartData.title },
+                            legend: { display: chartData.series.length > 1 },
+                        },
+                        scales: {
+                            x: { type: 'linear', position: 'bottom', title: { display: true, text: chartData.x_label } },
+                            y: { title: { display: true, text: chartData.y_label } },
+                        }
+                    }
+                });
+            }
+
+            if(newChart) {
+                window.activeCharts.push(newChart);
+            }
+        });
+    };
+
+    // Initial run on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        const dataElement = document.getElementById('results-page-data');
+        if (dataElement && dataElement.textContent) {
+            const initialBlocks = JSON.parse(dataElement.textContent);
+            window.renderCharts(initialBlocks);
+        }
+    });
+</script>
+{% endblock scripts %}
