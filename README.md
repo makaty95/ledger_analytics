@@ -73,7 +73,7 @@ The project is split into three cooperating services:
 
 ```bash
 git clone <this-repo-url>
-cd openAI_mcp_course2026
+cd ledger_analytics
 python -m venv .venv
 ```
 
